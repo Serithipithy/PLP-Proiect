@@ -91,11 +91,7 @@ Fixpoint beval_fun (b : bexp) (env : Env) : bool :=
                   | false, false => false
                   end
   end.
-(*Inductive listNat : Type :=
-| nil
-| cons ( n : string ) ( l : listNat) .*)
-
-Notation "'declare' var" :=(avar var) (at level 40). 
+ 
 Notation "A +' B" := (aplus A B) (at level 48).
 Notation "A -' B" := (aminus A B) (at level 48).  
 Notation "A //' B" := (adivision A B) (at level 46).  
@@ -108,17 +104,31 @@ Notation "A ==' B" := (bequal A B) (at level 70, no associativity).
 Notation "A >=' B" := (blessthan B A) (at level 53).
 Infix "and'" := band (at level 80).
 
-(*Notation " x :=: l" := (cons x l) (at level 60, right associativity).
-Notation "[ ]" := nil.
-Notation "[ x ; .. ; y ]" := (cons x .. (cons y nil) ..).*)
+(* Vectori *)
+Inductive listNat : Type :=
+| nil
+| cons ( n : nat ) ( l : listNat) .
 
+Inductive Vector : Type :=
+| vector : string -> listNat -> Vector.
+
+Notation "[ ]" := nil (format "[ ]") : list_scope.
+Notation "[ x ]" := (cons x nil) : list_scope.
+Notation "[ x ; y ; .. ; z ]" := (cons x (cons y .. (cons z nil) ..)) : list_scope.
+Notation " name { x ; y ; .. ; z }" := ( vector name (cons x (cons y .. (cons z nil) ..))) (at level 30) .
+
+(* stmt *)
 Inductive Stmt :=
+| declarare_var : string -> Stmt 
+| declarare_vector : Vector -> Stmt
 | assignment : string -> aexp -> Stmt
 | sequence : Stmt -> Stmt -> Stmt
 | while : bexp -> Stmt -> Stmt
 | iff : bexp -> Stmt -> Stmt -> Stmt
 | iffsimpl : bexp -> Stmt -> Stmt.
 
+Notation "'int' var" :=(declarare_var var) (at level 40).
+Notation "'int_vector' var" :=(declarare_vector var) (at level 40).
 Notation "X ::= A" := (assignment X A) (at level 50).
 Notation "S1 ;; S2" := (sequence S1 S2) (at level 90).
 Notation "'ifs' cond 'den' { stmt }" := (iffsimpl cond stmt) (at level 93).
@@ -127,9 +137,9 @@ Notation "'While' ( B ) { S }" := (while B S) (at level 97).
 Notation "'phor' ( s1 ~ cond ~ s2 ) { stmt }" := (s1 ;; While ( cond ) { stmt ;; s2 }  ) (at level 97).
 Notation "'do' { stmt } 'whilee' ( cond )" := ( stmt ;; While ( cond ) { stmt } ) (at level 97).
 
+(* Stings *)
 Require Import String.
 Open Scope string_scope.
-
 (* itoa *)
 Class Shows A : Type :=
   {
@@ -209,4 +219,4 @@ Compute (atoi "12").
 Compute (atoi "652").
 Compute (atoi "02").
 
-
+(* Lambda *)
