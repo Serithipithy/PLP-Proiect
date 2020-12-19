@@ -129,14 +129,11 @@ Notation "'do' { stmt } 'whilee' ( cond )" := ( stmt ;; While ( cond ) { stmt } 
 
 Require Import String.
 Open Scope string_scope.
+
 (* itoa *)
 Class Shows A : Type :=
   {
     itoa : A -> string;
-  }.
-Class Shown A : Type :=
-  {
-    atoi : A -> nat
   }.
 Fixpoint nat_to_string_aux (time n : nat) (acc : string) : string :=
   let d := match n mod 10 with
@@ -160,7 +157,15 @@ Instance showNat : Shows nat :=
     itoa := nat_to_string
   }.
 Compute (itoa 42).
+Compute (itoa 540).
+Compute (itoa 3455).
 
+
+(* atoi *)
+Class Shown A : Type :=
+  {
+    atoi : A -> nat
+  }.
 Definition is_nat (x : ascii) : nat :=
   match x with
   | "0" => 0
@@ -176,22 +181,32 @@ Definition is_nat (x : ascii) : nat :=
   | _ =>   0
   end%char.
 
+Fixpoint reverse_string ( s: string ) : string :=
+match s with
+| EmptyString => EmptyString
+| String ch rest => (reverse_string rest) ++ (String ch EmptyString)
+end.
 
-Definition first_ch (l:list ascii) : ascii := (* Preia primul elem din lista *)
-    match l with
-      | nil => " "
-      | a :: nill => a
-    end.
-Definition remove_first_ch (l:list ascii) : list ascii := (* Sterge primul elem din lista *)
-    match l with
-      | nil => []
-      | a :: m => m
-    end.
-Fixpoint list_ascii_of_string (s : string) : list ascii (* De la string la lista ascii *)
-  := match s with
-     | EmptyString => []
-     | String ch s => cons ch (list_ascii_of_string s)
-     end.
+Fixpoint string_to_nat_aux ( s : string ) : nat :=
+match s with
+  | EmptyString => 0
+  | String ch rest =>
+    match ( is_nat ch ), (string_to_nat_aux rest) with
+      | x, y => x +  y * 10
+    end
+end.
 
+Definition string_to_nat ( s: string ) : nat :=
+match string_to_nat_aux(reverse_string s) with
+  | n => n
+end.
+
+Instance showStr : Shown string :=
+  {
+    atoi := string_to_nat
+  }.
+Compute (atoi "12").
+Compute (atoi "652").
+Compute (atoi "02").
 
 
