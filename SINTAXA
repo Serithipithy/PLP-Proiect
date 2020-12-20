@@ -1,0 +1,82 @@
+Module NatList.
+Set Warnings "-notation-overridden,-parsing".
+From Coq Require Import Bool.Bool.
+From Coq Require Import Init.Nat.
+From Coq Require Import Arith.Arith.
+From Coq Require Import Arith.EqNat.
+From Coq Require Import Lists.List.
+From Coq Require Import Strings.String.
+From Coq Require Import Ascii.
+
+
+
+
+(* SINTAXA *)
+Inductive string : Set :=
+  | EmptyString : string
+  | String : ascii -> string -> string.
+
+Definition Env := string -> nat.
+
+Inductive aexp :=
+| avar : string -> aexp
+| anum : nat -> aexp
+| aplus : aexp -> aexp -> aexp
+| aminus : aexp -> aexp -> aexp 
+| adivision : aexp -> aexp -> aexp 
+| amodulo : aexp -> aexp -> aexp 
+| amul : aexp -> aexp -> aexp.
+
+Coercion anum : nat >-> aexp.
+Coercion avar : string >-> aexp.
+
+Inductive bexp :=
+| btrue : bexp
+| bfalse : bexp
+| blessthan : aexp -> aexp -> bexp
+| bequal : aexp -> aexp -> bexp
+| bnot : bexp -> bexp
+| band : bexp -> bexp -> bexp.
+
+(* Stiva *)
+Inductive listNat : Type :=
+| nil
+| cons ( n : nat ) ( l : listNat) .
+
+Inductive Stiva : Set :=
+| stiva : string -> listNat -> Stiva.
+
+Notation "[ ]" := nil (format "[ ]") : list_scope.
+Notation "[ x ]" := (cons x nil) : list_scope.
+Notation "[ x ; y ; .. ; z ]" := (cons x (cons y .. (cons z nil) ..)) : list_scope.
+Notation " name { x ; y ; .. ; z }" := ( stiva name (cons x (cons y .. (cons z nil) ..))) (at level 30) .
+
+Inductive stexp1 :=
+| push : nat -> stexp1
+| top : Stiva -> stexp1.
+
+Inductive stexp2 :=
+| pop : Stiva -> stexp2
+| stempty : Stiva -> stexp2.
+
+(* stmt *)
+Inductive Stmt :=
+| declarare_var : string -> Stmt 
+| declarare_string : string -> Stmt
+| declarare_stiva : Stiva -> Stmt
+| assignment : string -> aexp -> Stmt
+| sequence : Stmt -> Stmt -> Stmt
+| while : bexp -> Stmt -> Stmt
+| iff : bexp -> Stmt -> Stmt -> Stmt
+| iffsimpl : bexp -> Stmt -> Stmt.
+
+Notation "'int' var" :=(declarare_var var) (at level 40).
+Notation "'int_stack' var" :=(declarare_stiva var) (at level 40).
+Notation "'str' var" :=(declarare_string var) (at level 40).
+Notation "X ::= A" := (assignment X A) (at level 50).
+Notation "S1 ;; S2" := (sequence S1 S2) (at level 90).
+Notation "'ifs' cond 'den' { stmt }" := (iffsimpl cond stmt) (at level 93).
+Notation "'ifd' cond 'denn' { stmt1 } 'els' { stmt2 }" := (iff cond stmt1 stmt2) (at level 93).
+Notation "'While' ( B ) { S }" := (while B S) (at level 97).
+Notation "'phor' ( s1 ~ cond ~ s2 ) { stmt }" := (s1 ;; While ( cond ) { stmt ;; s2 }  ) (at level 97).
+Notation "'do' { stmt } 'whilee' ( cond )" := ( stmt ;; While ( cond ) { stmt } ) (at level 97).
