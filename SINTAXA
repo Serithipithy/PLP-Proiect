@@ -7,7 +7,7 @@ From Coq Require Import Arith.EqNat.
 From Coq Require Import Lists.List.
 From Coq Require Import Strings.String.
 From Coq Require Import Ascii.
-
+Module PartialMap.
 
 
 
@@ -30,6 +30,12 @@ Inductive aexp :=
 Coercion anum : nat >-> aexp.
 Coercion avar : string >-> aexp.
 
+Notation "A +' B" := (aplus A B) (at level 48).
+Notation "A -' B" := (aminus A B) (at level 48).  
+Notation "A //' B" := (adivision A B) (at level 46).  
+Notation "A %' B" := (amodulo A B) (at level 46).  
+Notation "A *' B" := (amul A B) (at level 46).
+
 Inductive bexp :=
 | btrue : bexp
 | bfalse : bexp
@@ -37,6 +43,13 @@ Inductive bexp :=
 | bequal : aexp -> aexp -> bexp
 | bnot : bexp -> bexp
 | band : bexp -> bexp -> bexp.
+
+Notation "'~' A" := (bnot A) (at level 75, right associativity).
+Notation "A <=' B" := (blessthan A B) (at level 53).
+Notation "A ==' B" := (bequal A B) (at level 70, no associativity).
+Notation "A >=' B" := (blessthan B A) (at level 53).
+Infix "and'" := band (at level 80).
+
 
 (* Stiva *)
 Inductive listNat : Type :=
@@ -58,6 +71,10 @@ Inductive stexp1 :=
 Inductive stexp2 :=
 | pop : Stiva -> stexp2
 | stempty : Stiva -> stexp2.
+Notation "'push'( stack , x )" := ( push x stack ) (at level 60).
+Notation "'top'( stack )" := ( top stack ) (at level 60).
+Notation "'pop'( stack )" := ( pop stack ) (at level 60).
+Notation "'empty_stack'( stack )" := ( stempty stack ) (at level 60).
 
 (* stmt *)
 Inductive Stmt :=
@@ -80,3 +97,16 @@ Notation "'ifd' cond 'denn' { stmt1 } 'els' { stmt2 }" := (iff cond stmt1 stmt2)
 Notation "'While' ( B ) { S }" := (while B S) (at level 97).
 Notation "'phor' ( s1 ~ cond ~ s2 ) { stmt }" := (s1 ;; While ( cond ) { stmt ;; s2 }  ) (at level 97).
 Notation "'do' { stmt } 'whilee' ( cond )" := ( stmt ;; While ( cond ) { stmt } ) (at level 97).
+
+(* Lambda *)
+Inductive id : Type :=
+  | Id (s : string).
+
+Inductive partial_map : Type :=
+  | empty
+  | record (i : id) (v : nat) (m : partial_map).
+
+Inductive Lambda : Set :=
+  | empty_l : Lambda
+  | rightleft_empty : partial_map -> Stmt -> Lambda
+  | full : partial_map -> partial_map -> Stmt -> Lambda.
