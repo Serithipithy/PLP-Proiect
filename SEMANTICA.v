@@ -18,11 +18,8 @@ Scheme Equality for string.
 
 Set Implicit Arguments.
 
-(*Inductive strings : Set :=
-  | EmptyString : strings
-  | String : ascii -> string -> strings.*)
 
-Definition Env := string -> nat.
+Definition Env := string -> nat. (* Pt expresii aritmetice*)
 
 Inductive aexp :=
 | avar : string -> aexp
@@ -61,19 +58,16 @@ Inductive listNat : Type :=
 | nil
 | cons ( n : nat ) ( l : listNat) .
 
-Inductive Stiva : Type :=
-| stiva : string -> listNat -> Stiva.
+Definition Env2 := string -> listNat. (* Pt stive *)
 
 Notation "[ ]" := nil (format "[ ]") : list_scope.
 Notation "[ x ]" := (cons x nil) : list_scope.
 Infix "::" := cons (at level 60, right associativity) : list_scope.
 Notation "[ x ; y ; .. ; z ]" := (cons x (cons y .. (cons z nil) ..)) : list_scope.
-Notation " name :=: listNat " := ( stiva name listNat ) (at level 30) : list_scope. 
 Compute [ 10 ; 15 ; 16 ; 5].
-Compute "a" :=: [10 ; 15 ; 16 ; 5] .
 
 Inductive stexp :=
-| stack : listNat ->stexp
+| sstack : listNat ->stexp
 | push : listNat -> nat -> stexp
 | pop : listNat -> stexp
 | stempty : listNat -> stexp.
@@ -90,21 +84,27 @@ Compute top ([10 ; 15 ; 16 ; 5]).
 Compute pop ([10 ; 15 ; 16 ; 5]).
 Compute stempty ([10 ; 15 ; 16 ; 5]).
 
+Definition Env3 := string -> string. (* Pt strings *)
+
+Inductive strexp1 :=
+| atoi : string -> strexp1.
+
+Inductive strexp2 :=
+| itoa : nat -> strexp2.
+
 
 (* stmt *)
 Inductive Stmt :=
-(*| declarare_var : string -> Stmt 
-| declarare_string : string -> Stmt
-| declarare_stiva : Stiva -> Stmt*)
+| assignment_string : string -> string -> Stmt
+| assignment_stiva : string -> listNat -> Stmt
 | assignment : string -> aexp -> Stmt
 | sequence : Stmt -> Stmt -> Stmt
 | while : bexp -> Stmt -> Stmt
 | iff : bexp -> Stmt -> Stmt -> Stmt
 | iffsimpl : bexp -> Stmt -> Stmt.
 
-(*Notation "'int' var" :=(declarare_var var) (at level 40).
-Notation "'int_stack' var" :=(declarare_stiva var) (at level 40).
-Notation "'str' var" :=(declarare_string var) (at level 40). *)
+Notation "'stack' var :=: variabile" :=(assignment_stiva var variabile) (at level 40).
+Notation "'str' var <<->> ass" :=(assignment_string var ass) (at level 40).
 Notation "X ::= A" := (assignment X A) (at level 50).
 Notation "S1 ;; S2" := (sequence S1 S2) (at level 90).
 Notation "'ifs' cond 'den' { stmt }" := (iffsimpl cond stmt) (at level 93).
@@ -114,16 +114,20 @@ Notation "'phor' ( s1 ~ cond ~ s2 ) { stmt }" := (s1 ;; While ( cond ) { stmt ;;
 Notation "'do' { stmt } 'whilee' ( cond )" := ( stmt ;; While ( cond ) { stmt } ) (at level 97).
 
 
-(*Example ex1 :=
-int "c" ;;
-int_stack "a" :=: [ 1 ; 2 ; 3] ;;
-str "b" ;;
+Example ex1 :=
+stack "a" :=: [ 1 ; 2 ; 3] ;;
 "c" ::= 10 ;;
-"b" ::= "ana"
+str "b" <<->> "ana"
 .
-Compute ex1.*)
+Compute ex1.
 
 (* SEMANTICA *)
+Definition env1 : Env :=  (* Pt expresii aritmetice*)
+  fun x =>
+    if (string_eq_dec x "fix")
+    then 10
+    else 0.
+Check env1.
 
 Definition update (env : Env)
            (x : string) (v : nat) : Env :=
@@ -166,7 +170,6 @@ Fixpoint aeval_fun (a : aexp) (env : Env) : nat :=
   | amodulo a1 a2 => (aeval_fun a1 env) mod (aeval_fun a2 env) 
   | amul a1 a2 => (aeval_fun a1 env) * (aeval_fun a2 env)
   end.
-
 Reserved Notation "A =[ S ]=> N" (at level 60).
 Inductive aeval : aexp -> Env -> nat -> Prop :=
 | const : forall n sigma, anum n =[ sigma ]=> n (* <n,sigma> => <n> *) 
@@ -181,17 +184,17 @@ Inductive aeval : aexp -> Env -> nat -> Prop :=
     a2 =[ sigma ]=> i2 ->
     n = i1 * i2 ->
     a1 *' a2 =[sigma]=> n
-| minus : forall a1 a2 i1 i2 sigma n, (* // exercitiul 1 // *)
+| minus : forall a1 a2 i1 i2 sigma n, 
     a1 =[ sigma ]=> i1 ->
     a2 =[ sigma ]=> i2 ->
     n = i1 - i2 ->
     a1 -' a2 =[sigma]=> n
-| division : forall a1 a2 i1 i2 sigma n, (* // exercitiul 1 // *)
+| division : forall a1 a2 i1 i2 sigma n,
     a1 =[ sigma ]=> i1 ->
     a2 =[ sigma ]=> i2 ->
     n = i1 / i2 ->
     a1 //' a2 =[sigma]=> n
-| modulo : forall a1 a2 i1 i2 sigma n, (* // exercitiul 1 // *)
+| modulo : forall a1 a2 i1 i2 sigma n,
     a1 =[ sigma ]=> i1 ->
     a2 =[ sigma ]=> i2 ->
     n = i1 mod i2 ->
@@ -238,6 +241,22 @@ Inductive beval : bexp -> Env -> bool -> Prop :=
 where "B ={ S }=> B'" := (beval B S B').
 
 (* Stiva *)
+
+Definition env2 : Env2 :=  (* Pt stive *)
+  fun x =>
+    if (string_eq_dec x "fix2")
+    then [ ]
+    else [ ].
+Check env2.
+
+Definition update2 (env : Env2)
+           (x : string) (v : listNat) : Env2 :=
+  fun y =>
+    if (string_eq_dec y x)
+    then v
+    else (env y).
+
+Notation "S [[ V /' X ]]" := (update2 S X V) (at level 0).
 Fixpoint pop_stack ( l: listNat) : listNat :=
 match l with
 | nil => nil
@@ -269,25 +288,36 @@ Compute push_stack ([10 ; 15 ; 16 ; 5]) (10).
 Compute top_stack ([10 ; 15 ; 16 ; 5]).
 Compute sempty_stack ([10 ; 15 ; 16 ; 5]).
 
-Definition seval_fun ( s : stexp ) (env : Env) : listNat :=
+Definition seval_fun ( s : stexp ) (env : Env2) : listNat :=
 match s with
-| stack x => x
+| sstack x => x
 | push a b => push_stack a b
 | pop a => pop_stack a
 | stempty a => sempty_stack a
 end.
 
-Definition seval_fun2 ( s : stexp2 ) (a : nat)(env : Env) : nat :=
+Definition seval_fun2 ( s : stexp2 ) ( a : nat ) (env : Env2) : nat :=
 match s with
 | top x => top_stack x a
 end.
-(* Stings *)
 
+(* Stings *)
+Definition env3 : Env3 :=  (* Pt strings *)
+  fun x =>
+    if (string_eq_dec x "fix3")
+    then ""
+    else "".
+Check env3.
+
+Definition update3 (env : Env3)
+           (x : string) (v : string) : Env3 :=
+  fun y =>
+    if (string_eq_dec y x)
+    then v
+    else (env y).
+
+Notation "S [[[ V /' X ]]]" := (update3 S X V) (at level 0).
 (* itoa *)
-Class Shows A : Type :=
-  {
-    itoa : A -> string;
-  }.
 Fixpoint nat_to_string_aux (time n : nat) (acc : string) : string :=
   let d := match n mod 10 with
            | 0 => "0" | 1 => "1" | 2 => "2" | 3 => "3" | 4 => "4" | 5 => "5"
@@ -305,20 +335,14 @@ Fixpoint nat_to_string_aux (time n : nat) (acc : string) : string :=
 
 Definition nat_to_string (n : nat) : string :=
   nat_to_string_aux n n "".
-Instance showNat : Shows nat :=
-  {
-    itoa := nat_to_string
-  }.
-Compute (itoa 42).
-Compute (itoa 540).
-Compute (itoa 3455).
 
+Definition streval_fun2 ( s : strexp2 ) (env : Env3) : string :=
+match s with
+| itoa n => nat_to_string n
+end.
 
 (* atoi *)
-Class Shown A : Type :=
-  {
-    atoi : A -> nat
-  }.
+
 Definition is_nat (x : ascii) : nat :=
   match x with
   | "0" => 0
@@ -354,18 +378,16 @@ match string_to_nat_aux(reverse_string s) with
   | n => n
 end.
 
-Instance showStr : Shown string :=
-  {
-    atoi := string_to_nat
-  }.
-Compute (atoi "12").
-Compute (atoi "652").
-Compute (atoi "02").
+Definition streval_fun1 ( s : strexp1 ) (env : Env3) : nat :=
+match s with
+| atoi n => string_to_nat n
+end.
 
-
+Compute streval_fun1 (atoi "12") env3.
+Compute streval_fun2 (itoa 652) env3.
 Reserved Notation "S -{ Sigma }-> Sigma'" (at level 60).
 
-Fixpoint eval (s : Stmt) (env : Env) (gas : nat) : Env :=
+(*Fixpoint eval (s : Stmt) (env : Env) (gas : nat) : Env :=
   match gas with
   | 0 => env
   | S gas' =>   match s with
@@ -382,16 +404,6 @@ Fixpoint eval (s : Stmt) (env : Env) (gas : nat) : Env :=
                                       else env
                 end
   end.
-
-(*Inductive Stmt :=
-| declarare_var : string -> Stmt 
-| declarare_string : string -> Stmt
-| declarare_stiva : Stiva -> Stmt
-| assignment : string -> aexp -> Stmt
-| sequence : Stmt -> Stmt -> Stmt
-| while : bexp -> Stmt -> Stmt
-| iff : bexp -> Stmt -> Stmt -> Stmt
-| iffsimpl : bexp -> Stmt -> Stmt.*)
 
 
 Inductive e_eval : Stmt -> Env -> Env -> Prop :=
