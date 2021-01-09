@@ -53,6 +53,32 @@ Notation "A ==' B" := (bequal A B) (at level 70, no associativity).
 Notation "A >=' B" := (blessthan B A) (at level 53).
 Infix "and'" := band (at level 80).
 
+Compute 10 +' 11.
+Compute 15 +' "a".
+Compute "b" +' 3.
+Compute "a" +' "b".
+
+Compute 10 -' 11.
+Compute 15 -' "a".
+Compute "b" -' 3.
+Compute ("a") -' ("b").
+
+Compute 10 *' 11.
+Compute 15 *' "a".
+Compute "b" *' 3.
+Compute ("a") *' ("b").
+
+Compute 10 //' 11.
+Compute 15 //' "a".
+Compute "b" //' 3.
+Compute ("a") //' ("b").
+
+Compute 10 %' 11.
+Compute 15 %' "a".
+Compute "b" %' 3.
+Compute ("a") %' ("b"). 
+
+
 (* Stiva *)
 Inductive listNat : Type :=
 | nil
@@ -92,6 +118,7 @@ Inductive strexp1 :=
 Inductive strexp2 :=
 | itoa : nat -> strexp2.
 
+Compute (atoi "13").
 
 (* stmt *)
 Inductive Stmt :=
@@ -386,27 +413,39 @@ end.
 Compute streval_fun1 (atoi "12") env3.
 Compute streval_fun2 (itoa 652) env3.
 Reserved Notation "S -{ Sigma }-> Sigma'" (at level 60).
+(*Inductive Stmt :=
+| assignment_string : string -> string -> Stmt
+| assignment_stiva : string -> listNat -> Stmt
+| assignment : string -> aexp -> Stmt
+| sequence : Stmt -> Stmt -> Stmt
+| while : bexp -> Stmt -> Stmt
+| iff : bexp -> Stmt -> Stmt -> Stmt
+| iffsimpl : bexp -> Stmt -> Stmt.*)
 
-(*Fixpoint eval (s : Stmt) (env : Env) (gas : nat) : Env :=
+(*Fixpoint eval (s : Stmt) ( c : Configuration) (gas : nat) : Configuration :=
   match gas with
-  | 0 => env
-  | S gas' =>   match s with
-                | assignment string aexp => update env string (aeval_fun aexp env)
-                | sequence S1 S2 => eval S2 (eval S1 env gas') gas'
-                | while cond s' => if (beval_fun cond env)
-                                   then eval (s' ;; (while cond s')) env gas'
-                                   else env
-                | iff cond s1 s2 => if (beval_fun cond env)
-                                    then eval s1 env gas'
-                                    else eval s2 env gas'
-                | iffsimpl cond s1 => if (beval_fun cond env)
-                                      then eval s1 env gas'
-                                      else env
-                end
-  end.
+  | 0 => c
+  | S gas' => match c with
+              | conf env3 env2 env =>
+                       match s with
+                      | assignment_string s1 s2 => update3 env3 s1 s2
+                      | sequence S1 S2 => eval S2 (eval S1 env gas') gas'
+                      | assignment string aexp => update env string (aeval_fun aexp env)
+                      | while cond s' => if (beval_fun cond env)
+                                         then eval (s' ;; (while cond s')) env gas'
+                                         else env
+                      | iff cond s1 s2 => if (beval_fun cond env)
+                                          then eval s1 env gas'
+                                          else eval s2 env gas'
+                      | iffsimpl cond s1 => if (beval_fun cond env)
+                                            then eval s1 env gas'
+                                            else env
+                      end
+        end
+end.
 
 
-Inductive e_eval : Stmt -> Env -> Env -> Prop :=
+(*Inductive e_eval : Stmt -> Env -> Env -> Prop :=
 | e_assignment: forall a i x sigma sigma',
     a =[ sigma ]=> i ->
     sigma' = (update sigma x i) ->
