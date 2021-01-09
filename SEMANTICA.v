@@ -19,7 +19,7 @@ Scheme Equality for string.
 Set Implicit Arguments.
 
 
-Definition Env := string -> nat. (* Pt expresii aritmetice*)
+Definition Variabila := string -> nat. (* Pt expresii aritmetice*)
 
 Inductive aexp :=
 | avar : string -> aexp
@@ -84,7 +84,7 @@ Inductive listNat : Type :=
 | nil
 | cons ( n : nat ) ( l : listNat) .
 
-Definition Env2 := string -> listNat. (* Pt stive *)
+Definition Stiva := string -> listNat. (* Pt stive *)
 
 Notation "[ ]" := nil (format "[ ]") : list_scope.
 Notation "[ x ]" := (cons x nil) : list_scope.
@@ -110,7 +110,7 @@ Compute top ([10 ; 15 ; 16 ; 5]).
 Compute pop ([10 ; 15 ; 16 ; 5]).
 Compute stempty ([10 ; 15 ; 16 ; 5]).
 
-Definition Env3 := string -> string. (* Pt strings *)
+Definition Strings := string -> string. (* Pt strings *)
 
 Inductive strexp1 :=
 | atoi : string -> strexp1.
@@ -148,21 +148,25 @@ str "b" <<->> "ana"
 .
 Compute ex1.
 
+Inductive Configuration := 
+| conf: Variabila -> Strings -> Stiva -> Configuration.
+
 (* SEMANTICA *)
-Definition env1 : Env :=  (* Pt expresii aritmetice*)
+Definition e_var : Variabila :=  (* Pt expresii aritmetice*)
   fun x =>
     if (string_eq_dec x "fix")
     then 10
     else 0.
-Check env1.
+Check e_var.
 
-Definition update (env : Env)
-           (x : string) (v : nat) : Env :=
-  fun y =>
-    if (string_eq_dec y x)
-    then v
-    else (env y).
-Notation "S [ V /' X ]" := (update S X V) (at level 0).
+Definition update_var (c : Configuration) (x : string) (v : nat) : Variabila :=
+match c with
+| conf vvar vstring vstiva =>   fun y =>
+                                    if (string_eq_dec y x)
+                                    then v
+                                    else (vvar y)
+end.
+Notation "S [ V /' X ]" := (update_var S X V) (at level 0).
 
 Fixpoint divmod x y q u :=
   match x with
@@ -187,18 +191,21 @@ Definition nmodulo x y :=
 Infix "/" := div : nat_scope.
 Infix "mod" := nmodulo (at level 40, no associativity) : nat_scope.
 
-Fixpoint aeval_fun (a : aexp) (env : Env) : nat :=
-  match a with
-  | avar k => env k
-  | anum v => v
-  | aplus a1 a2 => (aeval_fun a1 env) + (aeval_fun a2 env)
-  | aminus a1 a2 => (aeval_fun a1 env) - (aeval_fun a2 env) 
-  | adivision a1 a2 => (aeval_fun a1 env) / (aeval_fun a2 env) 
-  | amodulo a1 a2 => (aeval_fun a1 env) mod (aeval_fun a2 env) 
-  | amul a1 a2 => (aeval_fun a1 env) * (aeval_fun a2 env)
-  end.
+Fixpoint aeval_fun (a : aexp) (c :Configuration) : nat :=
+match c with
+| conf vvar vstring vstiva => 
+                              match a with
+                                | avar k => vvar k
+                                | anum v => v
+                                | aplus a1 a2 => (aeval_fun a1 c) + (aeval_fun a2 c)
+                                | aminus a1 a2 => (aeval_fun a1 c) - (aeval_fun a2 c) 
+                                | adivision a1 a2 => (aeval_fun a1 c) / (aeval_fun a2 c) 
+                                | amodulo a1 a2 => (aeval_fun a1 c) mod (aeval_fun a2 c) 
+                                | amul a1 a2 => (aeval_fun a1 c) * (aeval_fun a2 c)
+                                end
+end.
 Reserved Notation "A =[ S ]=> N" (at level 60).
-Inductive aeval : aexp -> Env -> nat -> Prop :=
+Inductive aeval : aexp -> Variabila -> nat -> Prop :=
 | const : forall n sigma, anum n =[ sigma ]=> n (* <n,sigma> => <n> *) 
 | var : forall v sigma, avar v =[ sigma ]=> (sigma v) (* <v,sigma> => sigma(x) *)
 | add : forall a1 a2 i1 i2 sigma n,
@@ -228,23 +235,26 @@ Inductive aeval : aexp -> Env -> nat -> Prop :=
     a1 %' a2 =[sigma]=> n
 where "a =[ sigma ]=> n" := (aeval a sigma n).
 
-Fixpoint beval_fun (b : bexp) (env : Env) : bool :=
-  match b with
-  | btrue => true
-  | bfalse => false
-  | blessthan a1 a2 => Nat.leb (aeval_fun a1 env) (aeval_fun a2 env)
-  | bequal a1 a2 => Nat.eqb (aeval_fun a1 env) (aeval_fun a2 env)
-  | bnot b' => negb (beval_fun b' env)
-  | band b1 b2 => match (beval_fun b1 env), (beval_fun b2 env) with
-                  | true, true => false
-                  | true, false => true
-                  | false, true => true
-                  | false, false => false
-                  end
-  end.
+Fixpoint beval_fun (b : bexp) (c : Configuration) : bool :=
+match c with
+| conf bvar bstring bstiva => 
+                            match b with
+                            | btrue => true
+                            | bfalse => false
+                            | blessthan a1 a2 => Nat.leb (aeval_fun a1 c) (aeval_fun a2 c)
+                            | bequal a1 a2 => Nat.eqb (aeval_fun a1 c) (aeval_fun a2 c)
+                            | bnot b' => negb (beval_fun b' c)
+                            | band b1 b2 => match (beval_fun b1 c), (beval_fun b2 c) with
+                                            | true, true => false
+                                            | true, false => true
+                                            | false, true => true
+                                            | false, false => false
+                                            end
+  end
+end.
 
 Reserved Notation "B ={ S }=> B'" (at level 70).
-Inductive beval : bexp -> Env -> bool -> Prop :=
+Inductive beval : bexp -> Variabila -> bool -> Prop :=
 | e_true : forall sigma, btrue ={ sigma }=> true
 | e_false : forall sigma, bfalse ={ sigma }=> false
 | e_lessthan : forall a1 a2 i1 i2 sigma b,
@@ -269,21 +279,22 @@ where "B ={ S }=> B'" := (beval B S B').
 
 (* Stiva *)
 
-Definition env2 : Env2 :=  (* Pt stive *)
+Definition e_stiva : Stiva :=  (* Pt stive *)
   fun x =>
     if (string_eq_dec x "fix2")
     then [ ]
     else [ ].
-Check env2.
+Check e_stiva.
 
-Definition update2 (env : Env2)
-           (x : string) (v : listNat) : Env2 :=
-  fun y =>
-    if (string_eq_dec y x)
-    then v
-    else (env y).
+Definition update_stiva (c : Configuration) (x : string) (v : listNat ) : Stiva :=
+match c with
+| conf svar sstring sstiva =>   fun y =>
+                                    if (string_eq_dec y x)
+                                    then v
+                                    else (sstiva y)
+end.
 
-Notation "S [[ V /' X ]]" := (update2 S X V) (at level 0).
+Notation "S [[ V /' X ]]" := (update_stiva S X V) (at level 0).
 Fixpoint pop_stack ( l: listNat) : listNat :=
 match l with
 | nil => nil
@@ -315,7 +326,7 @@ Compute push_stack ([10 ; 15 ; 16 ; 5]) (10).
 Compute top_stack ([10 ; 15 ; 16 ; 5]).
 Compute sempty_stack ([10 ; 15 ; 16 ; 5]).
 
-Definition seval_fun ( s : stexp ) (env : Env2) : listNat :=
+Definition seval_fun ( s : stexp ) (env : Stiva) : listNat :=
 match s with
 | sstack x => x
 | push a b => push_stack a b
@@ -323,27 +334,27 @@ match s with
 | stempty a => sempty_stack a
 end.
 
-Definition seval_fun2 ( s : stexp2 ) ( a : nat ) (env : Env2) : nat :=
+Definition seval_fun2 ( s : stexp2 ) ( a : nat ) (env : Stiva) : nat :=
 match s with
 | top x => top_stack x a
 end.
 
-(* Stings *)
-Definition env3 : Env3 :=  (* Pt strings *)
+(* Strings *)
+Definition e_string : Strings :=  (* Pt strings *)
   fun x =>
     if (string_eq_dec x "fix3")
     then ""
     else "".
-Check env3.
+Check e_string.
+Definition update_string (c : Configuration) (x : string) (v : string ) : Strings :=
+match c with
+| conf svar sstring sstiva =>   fun y =>
+                                    if (string_eq_dec y x)
+                                    then v
+                                    else (sstring y)
+end.
 
-Definition update3 (env : Env3)
-           (x : string) (v : string) : Env3 :=
-  fun y =>
-    if (string_eq_dec y x)
-    then v
-    else (env y).
-
-Notation "S [[[ V /' X ]]]" := (update3 S X V) (at level 0).
+Notation "S [[[ V /' X ]]]" := (update_string S X V) (at level 0).
 (* itoa *)
 Fixpoint nat_to_string_aux (time n : nat) (acc : string) : string :=
   let d := match n mod 10 with
@@ -363,7 +374,7 @@ Fixpoint nat_to_string_aux (time n : nat) (acc : string) : string :=
 Definition nat_to_string (n : nat) : string :=
   nat_to_string_aux n n "".
 
-Definition streval_fun2 ( s : strexp2 ) (env : Env3) : string :=
+Definition streval_fun2 ( s : strexp2 ) (env : Strings) : string :=
 match s with
 | itoa n => nat_to_string n
 end.
@@ -405,13 +416,13 @@ match string_to_nat_aux(reverse_string s) with
   | n => n
 end.
 
-Definition streval_fun1 ( s : strexp1 ) (env : Env3) : nat :=
+Definition streval_fun1 ( s : strexp1 ) (env : Strings) : nat :=
 match s with
 | atoi n => string_to_nat n
 end.
 
-Compute streval_fun1 (atoi "12") env3.
-Compute streval_fun2 (itoa 652) env3.
+Compute streval_fun1 (atoi "12") e_string.
+Compute streval_fun2 (itoa 652) e_string.
 Reserved Notation "S -{ Sigma }-> Sigma'" (at level 60).
 (*Inductive Stmt :=
 | assignment_string : string -> string -> Stmt
@@ -422,24 +433,25 @@ Reserved Notation "S -{ Sigma }-> Sigma'" (at level 60).
 | iff : bexp -> Stmt -> Stmt -> Stmt
 | iffsimpl : bexp -> Stmt -> Stmt.*)
 
-(*Fixpoint eval (s : Stmt) ( c : Configuration) (gas : nat) : Configuration :=
+Fixpoint eval (s : Stmt) ( c : Configuration) (gas : nat) : Configuration :=
   match gas with
   | 0 => c
   | S gas' => match c with
               | conf env3 env2 env =>
                        match s with
-                      | assignment_string s1 s2 => update3 env3 s1 s2
-                      | sequence S1 S2 => eval S2 (eval S1 env gas') gas'
-                      | assignment string aexp => update env string (aeval_fun aexp env)
-                      | while cond s' => if (beval_fun cond env)
-                                         then eval (s' ;; (while cond s')) env gas'
-                                         else env
-                      | iff cond s1 s2 => if (beval_fun cond env)
-                                          then eval s1 env gas'
-                                          else eval s2 env gas'
-                      | iffsimpl cond s1 => if (beval_fun cond env)
-                                            then eval s1 env gas'
-                                            else env
+                      | assignment_string s1 s2 => conf env3 (update_string c s1 s2) env
+                      | assignment_stiva s1 s2 => conf env3 env2 (update_stiva c s1 s2)
+                      | assignment s1 s2 => conf (update_var c s1 (aeval_fun s2 c)) env2 env
+                      | sequence S1 S2 => eval S2 (eval S1 c gas') gas'
+                      | while cond s' => if (beval_fun cond c)
+                                         then eval (s' ;; (while cond s')) c gas'
+                                         else c
+                      | iff cond s1 s2 => if (beval_fun cond c)
+                                          then eval s1 c gas'
+                                          else eval s2 c gas'
+                      | iffsimpl cond s1 => if (beval_fun cond c)
+                                            then eval s1 c gas'
+                                            else c
                       end
         end
 end.
