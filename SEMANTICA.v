@@ -72,31 +72,24 @@ Notation " name :=: listNat " := ( stiva name listNat ) (at level 30) : list_sco
 Compute [ 10 ; 15 ; 16 ; 5].
 Compute "a" :=: [10 ; 15 ; 16 ; 5] .
 
-Inductive stexp1 :=
-| push : Stiva -> nat -> stexp1
-| top : Stiva -> stexp1.
-
+Inductive stexp :=
+| stack : listNat ->stexp
+| push : listNat -> nat -> stexp
+| pop : listNat -> stexp
+| stempty : listNat -> stexp.
 Inductive stexp2 :=
-| pop : Stiva -> stexp2
-| stempty : Stiva -> stexp2.
+| top : listNat -> stexp2.
 
 Notation "'push'( stack , x )" := ( push stack x ) (at level 60).
 Notation "'top'( stack )" := ( top stack ) (at level 60).
 Notation "'pop'( stack )" := ( pop stack ) (at level 60).
 Notation "'empty_stack'( stack )" := ( stempty stack ) (at level 60).
 
-Compute push ("a" :=: [10 ; 15 ; 16 ; 5])  (10).
-Compute top ("a" :=: [10 ; 15 ; 16 ; 5]).
-Compute pop ("a" :=: [10 ; 15 ; 16 ; 5]).
-Compute stempty ("a" :=: [10 ; 15 ; 16 ; 5]).
+Compute push ([10 ; 15 ; 16 ; 5])  (10).
+Compute top ([10 ; 15 ; 16 ; 5]).
+Compute pop ([10 ; 15 ; 16 ; 5]).
+Compute stempty ([10 ; 15 ; 16 ; 5]).
 
-
-Fixpoint pop_list ( l: listNat) : listNat :=
-match l with
-| nil => nil
-| [ a ] => []
-| a :: l => a :: pop_list l
-end.
 
 (* stmt *)
 Inductive Stmt :=
@@ -243,6 +236,51 @@ Inductive beval : bexp -> Env -> bool -> Prop :=
     b1 ={ sigma }=> false ->
     band b1 b2 ={ sigma }=> false
 where "B ={ S }=> B'" := (beval B S B').
+
+(* Stiva *)
+Fixpoint pop_stack ( l: listNat) : listNat :=
+match l with
+| nil => nil
+| [ a ] => []
+| a :: l => a :: pop_stack l
+end.
+
+Fixpoint push_stack ( l: listNat) ( x : nat ) : listNat :=
+match l with
+| nil => [x]
+| a :: l => a :: push_stack l x
+end.
+
+Fixpoint top_stack (l:listNat ) (d:nat) {struct l} : nat :=
+match l with
+| nil => d
+| a :: nil => a
+| a :: l => top_stack l d
+end.
+
+Definition sempty_stack ( l: listNat) : listNat :=
+match l with
+| [] => []
+| a :: l => []
+end.
+
+Compute pop_stack ([10 ; 15 ; 16 ; 5]).
+Compute push_stack ([10 ; 15 ; 16 ; 5]) (10).
+Compute top_stack ([10 ; 15 ; 16 ; 5]).
+Compute sempty_stack ([10 ; 15 ; 16 ; 5]).
+
+Definition seval_fun ( s : stexp ) (env : Env) : listNat :=
+match s with
+| stack x => x
+| push a b => push_stack a b
+| pop a => pop_stack a
+| stempty a => sempty_stack a
+end.
+
+Definition seval_fun2 ( s : stexp2 ) (a : nat)(env : Env) : nat :=
+match s with
+| top x => top_stack x a
+end.
 (* Stings *)
 
 (* itoa *)
