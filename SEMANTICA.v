@@ -93,22 +93,26 @@ Notation "[ x ; y ; .. ; z ]" := (cons x (cons y .. (cons z nil) ..)) : list_sco
 Compute [ 10 ; 15 ; 16 ; 5].
 
 Inductive stexp :=
-| sstack : listNat ->stexp
-| push : listNat -> nat -> stexp
-| pop : listNat -> stexp
-| stempty : listNat -> stexp.
+| sstack : listNat -> stexp
+| stack : string -> stexp
+| push : stexp -> nat -> stexp
+| pop : stexp -> stexp
+| stempty : stexp -> stexp.
 Inductive stexp2 :=
-| top : listNat -> stexp2.
+| top_string : string -> stexp2
+| top_list : listNat -> stexp2.
 
 Notation "'push'( stack , x )" := ( push stack x ) (at level 60).
-Notation "'top'( stack )" := ( top stack ) (at level 60).
+Notation "'top_var'( stack )" := ( top_string stack ) (at level 60).
+Notation "'top_l'( stack )" := ( top_list stack ) (at level 60).
 Notation "'pop'( stack )" := ( pop stack ) (at level 60).
 Notation "'empty_stack'( stack )" := ( stempty stack ) (at level 60).
 
-Compute push ([10 ; 15 ; 16 ; 5])  (10).
-Compute top ([10 ; 15 ; 16 ; 5]).
-Compute pop ([10 ; 15 ; 16 ; 5]).
-Compute stempty ([10 ; 15 ; 16 ; 5]).
+Compute push (sstack ([10 ; 15 ; 16 ; 5]))  (10).
+Compute top_list ([10 ; 15 ; 16 ; 5]).
+Compute top_string ("a").
+Compute pop (sstack ([10 ; 15 ; 16 ; 5])).
+Compute stempty (sstack ([10 ; 15 ; 16 ; 5])).
 
 Definition Strings := string -> string. (* Pt strings *)
 
@@ -119,18 +123,25 @@ Inductive strexp2 :=
 | itoa : nat -> strexp2.
 
 Compute (atoi "13").
+Compute (itoa 12).
 
 (* stmt *)
 Inductive Stmt :=
 | assignment_string : string -> string -> Stmt
 | assignment_stiva : string -> listNat -> Stmt
 | assignment : string -> aexp -> Stmt
+| string_atoi: string -> string -> Stmt
+| string_itoa: string -> nat -> Stmt
+| stack_top: string -> string -> Stmt
+| stack_pop: string -> stexp -> Stmt
+| stack_push: string -> stexp -> nat -> Stmt
+| stack_sempty: string -> stexp -> Stmt
 | sequence : Stmt -> Stmt -> Stmt
 | while : bexp -> Stmt -> Stmt
 | iff : bexp -> Stmt -> Stmt -> Stmt
 | iffsimpl : bexp -> Stmt -> Stmt.
 
-Notation "'stack' var :=: variabile" :=(assignment_stiva var variabile) (at level 40).
+Notation "'stackk' var :=: variabile" :=(assignment_stiva var variabile) (at level 40).
 Notation "'str' var <<->> ass" :=(assignment_string var ass) (at level 40).
 Notation "X ::= A" := (assignment X A) (at level 50).
 Notation "S1 ;; S2" := (sequence S1 S2) (at level 90).
@@ -142,9 +153,20 @@ Notation "'do' { stmt } 'whilee' ( cond )" := ( stmt ;; While ( cond ) { stmt } 
 
 
 Example ex1 :=
-stack "a" :=: [ 1 ; 2 ; 3] ;;
+stackk "a" :=: [ 1 ; 2 ; 3] ;;
 "c" ::= 10 ;;
-str "b" <<->> "ana"
+str "b" <<->> "ana" ;;
+string_atoi "c" "123" ;;
+string_itoa "d" 123 ;;
+stack_top "c" "a" ;;
+stack_pop "a" (stack "a") ;;
+stack_push "a" (stack "a") 12 ;;
+stack_sempty "a" (stack "a") ;;
+(ifs (2 <=' "c") den { "s" ::= 11 ;; "s" ::= "s" +' 1 }) ;;
+(ifd (2 <=' "c") denn { "s" ::= 11 ;; "s" ::= "s" +' 1 } els { stack_pop "a" (stack "a") ;; "s" ::= 45 }) ;;
+(While ( "c" <=' 11 ) { "c" ::= "c" +' 1 }) ;;
+(phor ( ("i" ::= 1) ~ ("i" <=' 3) ~ ("i" ::= "i" +' 1) ) { "c" ::= "c" *' 2 }) ;;
+do { ("c" ::= "c" *' 2) } whilee ( "c" <=' 30 )
 .
 Compute ex1.
 
@@ -326,19 +348,28 @@ Compute push_stack ([10 ; 15 ; 16 ; 5]) (10).
 Compute top_stack ([10 ; 15 ; 16 ; 5]).
 Compute sempty_stack ([10 ; 15 ; 16 ; 5]).
 
-Definition seval_fun ( s : stexp ) (env : Stiva) : listNat :=
-match s with
-| sstack x => x
-| push a b => push_stack a b
-| pop a => pop_stack a
-| stempty a => sempty_stack a
+
+Fixpoint seval_fun ( s : stexp ) (c : Configuration) : listNat :=
+match c with
+| conf svar sstring sstiva => 
+                            match s with
+                            | sstack x => x
+                            | stack y => sstiva y
+                            | push a b => push_stack (seval_fun a c) b
+                            | pop a => pop_stack (seval_fun a c)
+                            | stempty a => sempty_stack (seval_fun a c)
+                            end
 end.
 
-Definition seval_fun2 ( s : stexp2 ) ( a : nat ) (env : Stiva) : nat :=
-match s with
-| top x => top_stack x a
+Definition seval_fun2 ( s : stexp2 ) (c : Configuration) : nat :=
+match c with
+| conf svar sstring sstiva => 
+                            match s with
+                            | top_string x => top_stack (sstiva x) 1 
+                            | top_list x => top_stack x 1
+                            end
 end.
-
+Check seval_fun2.
 (* Strings *)
 Definition e_string : Strings :=  (* Pt strings *)
   fun x =>
@@ -374,9 +405,12 @@ Fixpoint nat_to_string_aux (time n : nat) (acc : string) : string :=
 Definition nat_to_string (n : nat) : string :=
   nat_to_string_aux n n "".
 
-Definition streval_fun2 ( s : strexp2 ) (env : Strings) : string :=
-match s with
-| itoa n => nat_to_string n
+Definition streval_fun2 ( s : strexp2 ) (c : Configuration) : string :=
+match c with
+| conf svar sstring sstiva => 
+                              match s with
+                              | itoa n => nat_to_string n
+                              end
 end.
 
 (* atoi *)
@@ -416,22 +450,17 @@ match string_to_nat_aux(reverse_string s) with
   | n => n
 end.
 
-Definition streval_fun1 ( s : strexp1 ) (env : Strings) : nat :=
-match s with
-| atoi n => string_to_nat n
+Definition streval_fun1 ( s : strexp1 ) (c : Configuration) : nat :=
+match c with
+| conf svar sstring sstiva => 
+                              match s with
+                              | atoi n => string_to_nat n
+                              end
 end.
 
-Compute streval_fun1 (atoi "12") e_string.
-Compute streval_fun2 (itoa 652) e_string.
+(*Compute streval_fun1 (atoi "12") e_string.
+Compute streval_fun2 (itoa 652) e_string.*)
 Reserved Notation "S -{ Sigma }-> Sigma'" (at level 60).
-(*Inductive Stmt :=
-| assignment_string : string -> string -> Stmt
-| assignment_stiva : string -> listNat -> Stmt
-| assignment : string -> aexp -> Stmt
-| sequence : Stmt -> Stmt -> Stmt
-| while : bexp -> Stmt -> Stmt
-| iff : bexp -> Stmt -> Stmt -> Stmt
-| iffsimpl : bexp -> Stmt -> Stmt.*)
 
 Fixpoint eval (s : Stmt) ( c : Configuration) (gas : nat) : Configuration :=
   match gas with
@@ -442,6 +471,12 @@ Fixpoint eval (s : Stmt) ( c : Configuration) (gas : nat) : Configuration :=
                       | assignment_string s1 s2 => conf env3 (update_string c s1 s2) env
                       | assignment_stiva s1 s2 => conf env3 env2 (update_stiva c s1 s2)
                       | assignment s1 s2 => conf (update_var c s1 (aeval_fun s2 c)) env2 env
+                      | string_atoi vari stri => conf (update_var c vari (streval_fun1 (atoi stri) c)) env2 env
+                      | string_itoa stri vari => conf env3 (update_string c stri (streval_fun2 (itoa vari)c)) env
+                      | stack_top slist stri => conf (update_var c stri (seval_fun2 (top_string slist)c)) env2 env
+                      | stack_pop s1 s2 => conf env3 env2 (update_stiva c s1 (seval_fun (pop s2)c))
+                      | stack_push s1 s2 nat => conf env3 env2 (update_stiva c s1 (seval_fun (push s2 nat)c))
+                      | stack_sempty s1 s2 => conf env3 env2 (update_stiva c s1 (seval_fun (stempty s2)c))
                       | sequence S1 S2 => eval S2 (eval S1 c gas') gas'
                       | while cond s' => if (beval_fun cond c)
                                          then eval (s' ;; (while cond s')) c gas'
@@ -456,36 +491,3 @@ Fixpoint eval (s : Stmt) ( c : Configuration) (gas : nat) : Configuration :=
         end
 end.
 
-
-(*Inductive e_eval : Stmt -> Env -> Env -> Prop :=
-| e_assignment: forall a i x sigma sigma',
-    a =[ sigma ]=> i ->
-    sigma' = (update sigma x i) ->
-    (x ::= a) -{ sigma }-> sigma'
-| e_seq : forall s1 s2 sigma sigma1 sigma2,
-    s1 -{ sigma }-> sigma1 ->
-    s2 -{ sigma1 }-> sigma2 ->
-    (s1 ;; s2) -{ sigma }-> sigma2
-| e_whilefalse : forall b s sigma,
-    b ={ sigma }=> false ->
-    while b s -{ sigma }-> sigma
-| e_whiletrue : forall b s sigma sigma',
-    b ={ sigma }=> true ->
-    (s ;; while b s) -{ sigma }-> sigma' ->
-    while b s -{ sigma }-> sigma'
-| e_if_then_elsetrue : forall b s s2 sigma sigma',
-    b ={ sigma }=> true ->
-    s -{ sigma }-> sigma' ->
-    iff b s s2 -{ sigma }-> sigma'
-| e_if_then_elsefalse : forall b s s2 sigma sigma',
-    b ={ sigma }=> false ->
-    s2 -{ sigma }-> sigma' ->
-    iff b s s2 -{ sigma }-> sigma'
-| e_ifsimpl_true : forall b s sigma sigma',
-    b ={ sigma }=> true ->
-    s -{ sigma }-> sigma' ->
-    iffsimpl b s -{ sigma }-> sigma'
-| e_ifsimpl_false : forall b s sigma,
-    b ={ sigma }=> false ->
-    iffsimpl b s -{ sigma }-> sigma
-where "s -{ sigma }-> sigma'" := (e_eval s sigma sigma').
