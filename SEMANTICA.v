@@ -188,6 +188,8 @@ Compute ex1.
 Inductive Configuration := 
 | conf: Variabila -> Strings -> Stiva -> Configuration.
 
+
+
 (* SEMANTICA *)
 Definition e_var : Variabila :=  (* Pt expresii aritmetice*)
   fun x =>
@@ -241,36 +243,6 @@ match c with
                                 | amul a1 a2 => (aeval_fun a1 c) * (aeval_fun a2 c)
                                 end
 end.
-Reserved Notation "A =[ S ]=> N" (at level 60).
-Inductive aeval : aexp -> Variabila -> nat -> Prop :=
-| const : forall n sigma, anum n =[ sigma ]=> n (* <n,sigma> => <n> *) 
-| var : forall v sigma, avar v =[ sigma ]=> (sigma v) (* <v,sigma> => sigma(x) *)
-| add : forall a1 a2 i1 i2 sigma n,
-    a1 =[ sigma ]=> i1 ->
-    a2 =[ sigma ]=> i2 ->
-    n = i1 + i2 ->
-    a1 +' a2 =[sigma]=> n
-| times : forall a1 a2 i1 i2 sigma n,
-    a1 =[ sigma ]=> i1 ->
-    a2 =[ sigma ]=> i2 ->
-    n = i1 * i2 ->
-    a1 *' a2 =[sigma]=> n
-| minus : forall a1 a2 i1 i2 sigma n, 
-    a1 =[ sigma ]=> i1 ->
-    a2 =[ sigma ]=> i2 ->
-    n = i1 - i2 ->
-    a1 -' a2 =[sigma]=> n
-| division : forall a1 a2 i1 i2 sigma n,
-    a1 =[ sigma ]=> i1 ->
-    a2 =[ sigma ]=> i2 ->
-    n = i1 / i2 ->
-    a1 //' a2 =[sigma]=> n
-| modulo : forall a1 a2 i1 i2 sigma n,
-    a1 =[ sigma ]=> i1 ->
-    a2 =[ sigma ]=> i2 ->
-    n = i1 mod i2 ->
-    a1 %' a2 =[sigma]=> n
-where "a =[ sigma ]=> n" := (aeval a sigma n).
 
 Fixpoint beval_fun (b : bexp) (c : Configuration) : bool :=
 match c with
@@ -290,29 +262,6 @@ match c with
   end
 end.
 
-Reserved Notation "B ={ S }=> B'" (at level 70).
-Inductive beval : bexp -> Variabila -> bool -> Prop :=
-| e_true : forall sigma, btrue ={ sigma }=> true
-| e_false : forall sigma, bfalse ={ sigma }=> false
-| e_lessthan : forall a1 a2 i1 i2 sigma b,
-    a1 =[ sigma ]=> i1 ->
-    a2 =[ sigma ]=> i2 ->
-    b = Nat.leb i1 i2 ->
-    a1 <=' a2 ={ sigma }=> b
-| e_nottrue : forall b sigma,
-    b ={ sigma }=> true ->
-    (bnot b) ={ sigma }=> false
-| e_notfalse : forall b sigma,
-    b ={ sigma }=> false ->
-    (bnot b) ={ sigma }=> true
-| e_andtrue : forall b1 b2 sigma t,
-    b1 ={ sigma }=> true ->
-    b2 ={ sigma }=> t ->
-    band b1 b2 ={ sigma }=> t
-| e_andfalse : forall b1 b2 sigma,
-    b1 ={ sigma }=> false ->
-    band b1 b2 ={ sigma }=> false
-where "B ={ S }=> B'" := (beval B S B').
 
 (* Stiva *)
 
@@ -385,6 +334,8 @@ match c with
                             end
 end.
 Check seval_fun2.
+
+
 (* Strings *)
 Definition e_string : Strings :=  (* Pt strings *)
   fun x =>
@@ -505,4 +456,3 @@ Fixpoint eval (s : Stmt) ( c : Configuration) (gas : nat) : Configuration :=
                       end
         end
 end.
-
