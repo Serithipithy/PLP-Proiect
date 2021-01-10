@@ -333,7 +333,7 @@ match c with
 end.
 
 (* Strings *)
-
+(*itoa*)
 Fixpoint nat_to_string_aux (time n : nat) (acc : string) : string :=
   let d := match n mod 10 with
            | 0 => "0" | 1 => "1" | 2 => "2" | 3 => "3" | 4 => "4" | 5 => "5"
@@ -423,12 +423,6 @@ match l with
 | a :: l => a :: push_stack l x
 end.
 
-Fixpoint push_stack_var ( l: listNat) ( x : string ) : listNat := (* pt variabile deja existente*)
-match l with
-| nil => [ (e_var x) ]
-| a :: l => a :: push_stack_var l x
-end.
-
 Fixpoint top_stack (l:listNat ) (d:nat) {struct l} : nat :=
 match l with
 | nil => d
@@ -444,7 +438,6 @@ end.
 
 Compute pop_stack ([10 ; 15 ; 16 ; 5]).
 Compute push_stack ([10 ; 15 ; 16 ; 5]) (10).
-Compute push_stack_var ([10 ; 15 ; 16 ; 5]) "a".
 Compute top_stack ([10 ; 15 ; 16 ; 5]).
 Compute sempty_stack ([10 ; 15 ; 16 ; 5]).
 
