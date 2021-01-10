@@ -146,7 +146,7 @@ Notation "'ifs' cond 'den' { stmt }" := (iffsimpl cond stmt) (at level 93).
 Notation "'ifd' cond 'denn' { stmt1 } 'els' { stmt2 }" := (iff cond stmt1 stmt2) (at level 93).
 Notation "'While' ( B ) { S }" := (while B S) (at level 97).
 Notation "'phor' ( s1 ~ cond ~ s2 ) { stmt }" := (s1 ;; While ( cond ) { stmt ;; s2 }  ) (at level 97).
-Notation "'do' { stmt } 'whilee' ( cond )" := ( stmt ;; While ( cond ) { stmt } ) (at level 97).
+Notation "'do' { stmt } 'whilee' ( cond )" := ( stmt ;; while ( cond ) ( stmt ) ) (at level 97).
 
 Example ex1 :=
 stackk "a" :=: [ 1 ; 2 ; 3] ;;
@@ -179,7 +179,13 @@ do {
      ("c" ::= "c" *' 2) 
     } whilee ( "c" <=' 30 )
 .
+
+Example ex2 :=
+stackk "s" :=: [ 1 ; 2 ; 3 ; 4 ; 5] ;;
+"a" ::= 6 ;;
+stack_top "c" "a" .
 Compute ex1.
+Compute ex2.
 
 (* SEMANTICA *)
 
@@ -454,9 +460,15 @@ match c with
 end.
 Check seval_fun2.
 
+Compute seval_fun (push (sstack ([10 ; 15 ; 16 ; 5]))  (10)) config1.
+Compute seval_fun2 (top_list ([10 ; 15 ; 16 ; 5])) config1.
+Compute seval_fun2 (top_string ("a")) config1.
+Compute seval_fun (pop (sstack ([10 ; 15 ; 16 ; 5]))) config1.
+Compute seval_fun (stempty (sstack ([10 ; 15 ; 16 ; 5]))) config1.
+
 (* Stmt *)
 
-Reserved Notation "S -{ Sigma }-> Sigma'" (at level 60).
+(*Reserved Notation "S -{ Sigma }-> Sigma'" (at level 60).*)
 
 Fixpoint eval (s : Stmt) ( c : Configuration) (gas : nat) : Configuration :=
   match gas with
@@ -486,3 +498,106 @@ Fixpoint eval (s : Stmt) ( c : Configuration) (gas : nat) : Configuration :=
                       end
         end
 end.
+Definition get_nat (c : Configuration) ( s: string ) : nat :=
+match c with 
+| conf env3 env2 env => (env3 s) 
+end.
+
+Definition get_string (c : Configuration) ( s: string ) : string :=
+match c with 
+| conf env3 env2 env => (env2 s) 
+end.
+
+Definition get_stack (c : Configuration) ( s: string ) : listNat :=
+match c with 
+| conf env3 env2 env => (env s) 
+end.
+
+
+Definition config2 : Configuration := eval ("x" ::= 123 +' 34 //' 10 ;; str "b" <<->> "ana" ;; stackk "a" :=: [ 1 ; 2 ; 3] ) config1 300.
+
+Compute get_string config2 "b".
+Compute get_nat config2 "x".
+Compute get_stack config2 "a".
+
+Definition config3 : Configuration := eval ex1 config1 300.
+Compute get_string config3 "b".
+Compute get_nat config3 "c".
+Compute get_nat config3 "s".
+Compute get_nat config3 "i".
+Compute get_stack config3 "a".
+
+Example p_ex2 :=
+stackk "s" :=: [ 1 ; 2 ; 3 ; 4 ; 5] ;;
+"a" ::= 6 ;;
+stack_top "s" "a" .
+
+Definition config4 : Configuration := eval p_ex2 config1 300.
+Compute get_nat config4 "a".
+Compute get_stack config4 "s".
+
+Example p_ex3 :=
+stackk "s" :=: [ 1 ; 2 ; 3 ; 4 ; 5] ;;
+"a" ::= 6 ;;
+stack_top "s" "a" ;;
+stack_pop "s" (stack "s") .
+
+Definition config5 : Configuration := eval p_ex3 config1 300.
+Compute get_stack config5 "s".
+
+Example p_ex4 :=
+stackk "s" :=: [ 1 ; 2 ; 3 ; 4 ; 5] ;;
+"a" ::= 6 ;;
+stack_top "s" "a" ;;
+stack_pop "s" (stack "s") ;;
+stack_push "s" (stack "s") 12 .
+
+Definition config6 : Configuration := eval p_ex4 config1 300.
+Compute get_stack config6 "s".
+
+Example p_ex5 :=
+string_atoi "c" "123" ;;
+string_itoa "d" 35.
+
+Definition config7 : Configuration := eval p_ex5 config1 300.
+Compute get_nat config7 "c".
+Compute get_string config7 "d".
+
+Example p_ex6 :=
+stackk "s" :=: [ 34 ; 2 ; 11 ; 23 ; 129] ;;
+"i" ::= 10 ;;
+While ( "i" <=' 12 ) 
+    { stack_pop "s" (stack "s") ;;
+     "i" ::= ("i" +' 1) }
+.
+
+Definition config8 : Configuration := eval p_ex6 config1 300.
+Compute get_nat config8 "i".
+Compute get_stack config8 "s".
+
+Example p_ex7 :=
+stackk "s" :=: [ 34 ; 2 ; 11 ; 23 ; 129] ;;
+"i" ::= 10 ;; 
+do { stack_pop "s" (stack "s") ;;
+     "i" ::= ("i" +' 1) }
+whilee ( "i" <=' 11 )
+.
+
+Definition config9 : Configuration := eval p_ex7 config1 300.
+Compute get_nat config9 "i".
+Compute get_stack config9 "s".
+
+Example p_ex8 :=
+stackk "s" :=: [ 34 ; 2 ; 11 ; 23 ; 129] ;;
+stackk "x" :=: [ ] ;;
+"nr" ::= 111 ;;
+phor ( ("i" ::= 1) ~ ("i" <=' 3) ~ ("i" ::= "i" +' 1) ) 
+      { stack_pop "s" (stack "s") ;;
+        stack_push "x" (stack "x") 13
+       }
+.
+
+Definition config10 : Configuration := eval p_ex8 config1 300.
+Compute get_nat config10 "i".
+Compute get_stack config10 "s".
+Compute get_stack config10 "x".
