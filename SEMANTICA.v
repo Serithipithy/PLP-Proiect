@@ -18,8 +18,15 @@ Scheme Equality for string.
 
 Set Implicit Arguments.
 
-
 Definition Variabila := string -> nat. (* Pt expresii aritmetice*)
+Definition Strings := string -> string. (* Pt strings *)
+Inductive listNat : Type :=
+| nil
+| cons ( n : nat ) ( l : listNat) .
+
+Definition Stiva := string -> listNat. (* Pt stive *)
+Inductive Configuration := 
+| conf: Variabila -> Strings -> Stiva -> Configuration.
 
 Inductive aexp :=
 | avar : string -> aexp
@@ -41,6 +48,22 @@ Inductive bexp :=
 | bnot : bexp -> bexp
 | band : bexp -> bexp -> bexp.
 
+Inductive strexp1 :=
+| atoi : string -> strexp1.
+
+Inductive strexp2 :=
+| itoa : nat -> strexp2.
+
+Inductive stexp :=
+| sstack : listNat -> stexp
+| stack : string -> stexp
+| push : stexp -> nat -> stexp
+| pop : stexp -> stexp
+| stempty : stexp -> stexp.
+Inductive stexp2 :=
+| top_string : string -> stexp2
+| top_list : listNat -> stexp2.
+
 Notation "A +' B" := (aplus A B) (at level 48).
 Notation "A -' B" := (aminus A B) (at level 48).  
 Notation "A //' B" := (adivision A B) (at level 46).  
@@ -52,6 +75,17 @@ Notation "A <=' B" := (blessthan A B) (at level 53).
 Notation "A ==' B" := (bequal A B) (at level 70, no associativity).
 Notation "A >=' B" := (blessthan B A) (at level 53).
 Infix "and'" := band (at level 80).
+
+Notation "[ ]" := nil (format "[ ]") : list_scope.
+Notation "[ x ]" := (cons x nil) : list_scope.
+Infix "::" := cons (at level 60, right associativity) : list_scope.
+Notation "[ x ; y ; .. ; z ]" := (cons x (cons y .. (cons z nil) ..)) : list_scope.
+
+Notation "'push'( stack , x )" := ( push stack x ) (at level 60).
+Notation "'top_var'( stack )" := ( top_string stack ) (at level 60).
+Notation "'top_l'( stack )" := ( top_list stack ) (at level 60).
+Notation "'pop'( stack )" := ( pop stack ) (at level 60).
+Notation "'empty_stack'( stack )" := ( stempty stack ) (at level 60).
 
 Compute 10 +' 11.
 Compute 15 +' "a".
@@ -76,54 +110,17 @@ Compute ("a") //' ("b").
 Compute 10 %' 11.
 Compute 15 %' "a".
 Compute "b" %' 3.
-Compute ("a") %' ("b"). 
+Compute ("a") %' ("b").
 
+Compute (atoi "13").
+Compute (itoa 12).
 
-(* Stiva *)
-Inductive listNat : Type :=
-| nil
-| cons ( n : nat ) ( l : listNat) .
-
-Definition Stiva := string -> listNat. (* Pt stive *)
-
-Notation "[ ]" := nil (format "[ ]") : list_scope.
-Notation "[ x ]" := (cons x nil) : list_scope.
-Infix "::" := cons (at level 60, right associativity) : list_scope.
-Notation "[ x ; y ; .. ; z ]" := (cons x (cons y .. (cons z nil) ..)) : list_scope.
 Compute [ 10 ; 15 ; 16 ; 5].
-
-Inductive stexp :=
-| sstack : listNat -> stexp
-| stack : string -> stexp
-| push : stexp -> nat -> stexp
-| pop : stexp -> stexp
-| stempty : stexp -> stexp.
-Inductive stexp2 :=
-| top_string : string -> stexp2
-| top_list : listNat -> stexp2.
-
-Notation "'push'( stack , x )" := ( push stack x ) (at level 60).
-Notation "'top_var'( stack )" := ( top_string stack ) (at level 60).
-Notation "'top_l'( stack )" := ( top_list stack ) (at level 60).
-Notation "'pop'( stack )" := ( pop stack ) (at level 60).
-Notation "'empty_stack'( stack )" := ( stempty stack ) (at level 60).
-
 Compute push (sstack ([10 ; 15 ; 16 ; 5]))  (10).
 Compute top_list ([10 ; 15 ; 16 ; 5]).
 Compute top_string ("a").
 Compute pop (sstack ([10 ; 15 ; 16 ; 5])).
 Compute stempty (sstack ([10 ; 15 ; 16 ; 5])).
-
-Definition Strings := string -> string. (* Pt strings *)
-
-Inductive strexp1 :=
-| atoi : string -> strexp1.
-
-Inductive strexp2 :=
-| itoa : nat -> strexp2.
-
-Compute (atoi "13").
-Compute (itoa 12).
 
 (* stmt *)
 Inductive Stmt :=
@@ -150,7 +147,6 @@ Notation "'ifd' cond 'denn' { stmt1 } 'els' { stmt2 }" := (iff cond stmt1 stmt2)
 Notation "'While' ( B ) { S }" := (while B S) (at level 97).
 Notation "'phor' ( s1 ~ cond ~ s2 ) { stmt }" := (s1 ;; While ( cond ) { stmt ;; s2 }  ) (at level 97).
 Notation "'do' { stmt } 'whilee' ( cond )" := ( stmt ;; While ( cond ) { stmt } ) (at level 97).
-
 
 Example ex1 :=
 stackk "a" :=: [ 1 ; 2 ; 3] ;;
@@ -185,18 +181,16 @@ do {
 .
 Compute ex1.
 
-Inductive Configuration := 
-| conf: Variabila -> Strings -> Stiva -> Configuration.
-
-
-
 (* SEMANTICA *)
+
+(* Variabile *)
 Definition e_var : Variabila :=  (* Pt expresii aritmetice*)
   fun x =>
     if (string_eq_dec x "fix")
     then 10
     else 0.
 Check e_var.
+
 
 Definition update_var (c : Configuration) (x : string) (v : nat) : Variabila :=
 match c with
@@ -206,6 +200,45 @@ match c with
                                     else (vvar y)
 end.
 Notation "S [ V /' X ]" := (update_var S X V) (at level 0).
+
+(* Strings *)
+Definition e_string : Strings :=  (* Pt strings *)
+  fun x =>
+    if (string_eq_dec x "fix3")
+    then ""
+    else "".
+Check e_string.
+Definition update_string (c : Configuration) (x : string) (v : string ) : Strings :=
+match c with
+| conf svar sstring sstiva =>   fun y =>
+                                    if (string_eq_dec y x)
+                                    then v
+                                    else (sstring y)
+end.
+
+(* Stiva *)
+Definition e_stiva : Stiva :=  (* Pt stive *)
+  fun x =>
+    if (string_eq_dec x "fix2")
+    then [ ]
+    else [ ].
+Check e_stiva.
+Notation "S [[[ V /' X ]]]" := (update_string S X V) (at level 0).
+
+Definition update_stiva (c : Configuration) (x : string) (v : listNat ) : Stiva :=
+match c with
+| conf svar sstring sstiva =>   fun y =>
+                                    if (string_eq_dec y x)
+                                    then v
+                                    else (sstiva y)
+end.
+
+Notation "S [[ V /' X ]]" := (update_stiva S X V) (at level 0).
+
+Definition config1 : Configuration :=  conf e_var e_string e_stiva. 
+
+(* Variabile *)
+
 
 Fixpoint divmod x y q u :=
   match x with
@@ -244,6 +277,33 @@ match c with
                                 end
 end.
 
+Compute aeval_fun (10 +' 11) config1.
+Compute aeval_fun (15 +' "a") config1.
+Compute aeval_fun ("b" +' 3) config1.
+Compute aeval_fun  ("a" +' "b") config1.
+
+Compute aeval_fun (11 -' 10) config1.
+Compute aeval_fun (15 -' "a") config1.
+Compute aeval_fun ("b" -' 3) config1.
+Compute aeval_fun (("a") -' ("b")) config1.
+
+Compute aeval_fun (10 *' 11) config1.
+Compute aeval_fun (15 *' "a") config1.
+Compute aeval_fun ("b" *' 3) config1.
+Compute aeval_fun (("a") *' ("b")) config1.
+
+Compute aeval_fun (10 //' 3) config1.
+Compute aeval_fun (15 //' "a") config1.
+Compute aeval_fun ("b" //' 3) config1.
+Compute aeval_fun (("a") //' ("b")) config1.
+
+Compute aeval_fun (10 %' 4) config1.
+Compute aeval_fun (15 %' "a") config1.
+Compute aeval_fun ("b" %' 3) config1.
+Compute aeval_fun (("a") %' ("b")) config1.
+
+Compute aeval_fun ((((300 +' 23 -'76 +' (2 *' 10))) //' 2) %' 4) config1.
+
 Fixpoint beval_fun (b : bexp) (c : Configuration) : bool :=
 match c with
 | conf bvar bstring bstiva => 
@@ -262,97 +322,8 @@ match c with
   end
 end.
 
-
-(* Stiva *)
-
-Definition e_stiva : Stiva :=  (* Pt stive *)
-  fun x =>
-    if (string_eq_dec x "fix2")
-    then [ ]
-    else [ ].
-Check e_stiva.
-
-Definition update_stiva (c : Configuration) (x : string) (v : listNat ) : Stiva :=
-match c with
-| conf svar sstring sstiva =>   fun y =>
-                                    if (string_eq_dec y x)
-                                    then v
-                                    else (sstiva y)
-end.
-
-Notation "S [[ V /' X ]]" := (update_stiva S X V) (at level 0).
-Fixpoint pop_stack ( l: listNat) : listNat :=
-match l with
-| nil => nil
-| [ a ] => []
-| a :: l => a :: pop_stack l
-end.
-
-Fixpoint push_stack ( l: listNat) ( x : nat ) : listNat :=
-match l with
-| nil => [x]
-| a :: l => a :: push_stack l x
-end.
-
-Fixpoint top_stack (l:listNat ) (d:nat) {struct l} : nat :=
-match l with
-| nil => d
-| a :: nil => a
-| a :: l => top_stack l d
-end.
-
-Definition sempty_stack ( l: listNat) : listNat :=
-match l with
-| [] => []
-| a :: l => []
-end.
-
-Compute pop_stack ([10 ; 15 ; 16 ; 5]).
-Compute push_stack ([10 ; 15 ; 16 ; 5]) (10).
-Compute top_stack ([10 ; 15 ; 16 ; 5]).
-Compute sempty_stack ([10 ; 15 ; 16 ; 5]).
-
-
-Fixpoint seval_fun ( s : stexp ) (c : Configuration) : listNat :=
-match c with
-| conf svar sstring sstiva => 
-                            match s with
-                            | sstack x => x
-                            | stack y => sstiva y
-                            | push a b => push_stack (seval_fun a c) b
-                            | pop a => pop_stack (seval_fun a c)
-                            | stempty a => sempty_stack (seval_fun a c)
-                            end
-end.
-
-Definition seval_fun2 ( s : stexp2 ) (c : Configuration) : nat :=
-match c with
-| conf svar sstring sstiva => 
-                            match s with
-                            | top_string x => top_stack (sstiva x) 1 
-                            | top_list x => top_stack x 1
-                            end
-end.
-Check seval_fun2.
-
-
 (* Strings *)
-Definition e_string : Strings :=  (* Pt strings *)
-  fun x =>
-    if (string_eq_dec x "fix3")
-    then ""
-    else "".
-Check e_string.
-Definition update_string (c : Configuration) (x : string) (v : string ) : Strings :=
-match c with
-| conf svar sstring sstiva =>   fun y =>
-                                    if (string_eq_dec y x)
-                                    then v
-                                    else (sstring y)
-end.
 
-Notation "S [[[ V /' X ]]]" := (update_string S X V) (at level 0).
-(* itoa *)
 Fixpoint nat_to_string_aux (time n : nat) (acc : string) : string :=
   let d := match n mod 10 with
            | 0 => "0" | 1 => "1" | 2 => "2" | 3 => "3" | 4 => "4" | 5 => "5"
@@ -424,8 +395,67 @@ match c with
                               end
 end.
 
-(*Compute streval_fun1 (atoi "12") e_string.
-Compute streval_fun2 (itoa 652) e_string.*)
+Compute streval_fun1 (atoi "12") config1.
+Compute streval_fun2 (itoa 652) config1.
+
+(* Stiva *)
+
+Fixpoint pop_stack ( l: listNat) : listNat :=
+match l with
+| nil => nil
+| [ a ] => []
+| a :: l => a :: pop_stack l
+end.
+
+Fixpoint push_stack ( l: listNat) ( x : nat ) : listNat :=
+match l with
+| nil => [x]
+| a :: l => a :: push_stack l x
+end.
+
+Fixpoint top_stack (l:listNat ) (d:nat) {struct l} : nat :=
+match l with
+| nil => d
+| a :: nil => a
+| a :: l => top_stack l d
+end.
+
+Definition sempty_stack ( l: listNat) : listNat :=
+match l with
+| [] => []
+| a :: l => []
+end.
+
+Compute pop_stack ([10 ; 15 ; 16 ; 5]).
+Compute push_stack ([10 ; 15 ; 16 ; 5]) (10).
+Compute top_stack ([10 ; 15 ; 16 ; 5]).
+Compute sempty_stack ([10 ; 15 ; 16 ; 5]).
+
+
+Fixpoint seval_fun ( s : stexp ) (c : Configuration) : listNat :=
+match c with
+| conf svar sstring sstiva => 
+                            match s with
+                            | sstack x => x
+                            | stack y => sstiva y
+                            | push a b => push_stack (seval_fun a c) b
+                            | pop a => pop_stack (seval_fun a c)
+                            | stempty a => sempty_stack (seval_fun a c)
+                            end
+end.
+
+Definition seval_fun2 ( s : stexp2 ) (c : Configuration) : nat :=
+match c with
+| conf svar sstring sstiva => 
+                            match s with
+                            | top_string x => top_stack (sstiva x) 1 
+                            | top_list x => top_stack x 1
+                            end
+end.
+Check seval_fun2.
+
+(* Stmt *)
+
 Reserved Notation "S -{ Sigma }-> Sigma'" (at level 60).
 
 Fixpoint eval (s : Stmt) ( c : Configuration) (gas : nat) : Configuration :=
