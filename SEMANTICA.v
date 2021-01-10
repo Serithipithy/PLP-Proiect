@@ -58,6 +58,7 @@ Inductive stexp :=
 | sstack : listNat -> stexp
 | stack : string -> stexp
 | push : stexp -> nat -> stexp
+| push_var : stexp -> string -> stexp
 | pop : stexp -> stexp
 | stempty : stexp -> stexp.
 Inductive stexp2 :=
@@ -117,6 +118,7 @@ Compute (itoa 12).
 
 Compute [ 10 ; 15 ; 16 ; 5].
 Compute push (sstack ([10 ; 15 ; 16 ; 5]))  (10).
+Compute push_var (sstack ([10 ; 15 ; 16 ; 5]))  "x".
 Compute top_list ([10 ; 15 ; 16 ; 5]).
 Compute top_string ("a").
 Compute pop (sstack ([10 ; 15 ; 16 ; 5])).
@@ -132,6 +134,7 @@ Inductive Stmt :=
 | stack_top: string -> string -> Stmt
 | stack_pop: string -> stexp -> Stmt
 | stack_push: string -> stexp -> nat -> Stmt
+| stack_push_var: string -> stexp -> string -> Stmt
 | stack_sempty: string -> stexp -> Stmt
 | sequence : Stmt -> Stmt -> Stmt
 | while : bexp -> Stmt -> Stmt
@@ -157,6 +160,7 @@ string_itoa "d" 123 ;;
 stack_top "c" "a" ;;
 stack_pop "a" (stack "a") ;;
 stack_push "a" (stack "a") 12 ;;
+stack_push_var "a" (stack "a") "c" ;;
 stack_sempty "a" (stack "a") ;;
 (ifs (2 <=' "c") 
   den  
@@ -419,6 +423,12 @@ match l with
 | a :: l => a :: push_stack l x
 end.
 
+Fixpoint push_stack_var ( l: listNat) ( x : string ) : listNat := (* pt variabile deja existente*)
+match l with
+| nil => [ (e_var x) ]
+| a :: l => a :: push_stack_var l x
+end.
+
 Fixpoint top_stack (l:listNat ) (d:nat) {struct l} : nat :=
 match l with
 | nil => d
@@ -434,6 +444,7 @@ end.
 
 Compute pop_stack ([10 ; 15 ; 16 ; 5]).
 Compute push_stack ([10 ; 15 ; 16 ; 5]) (10).
+Compute push_stack_var ([10 ; 15 ; 16 ; 5]) "a".
 Compute top_stack ([10 ; 15 ; 16 ; 5]).
 Compute sempty_stack ([10 ; 15 ; 16 ; 5]).
 
@@ -445,6 +456,7 @@ match c with
                             | sstack x => x
                             | stack y => sstiva y
                             | push a b => push_stack (seval_fun a c) b
+                            | push_var a b => push_stack (seval_fun a c) (svar b)
                             | pop a => pop_stack (seval_fun a c)
                             | stempty a => sempty_stack (seval_fun a c)
                             end
@@ -484,6 +496,7 @@ Fixpoint eval (s : Stmt) ( c : Configuration) (gas : nat) : Configuration :=
                       | stack_top slist stri => conf (update_var c stri (seval_fun2 (top_string slist)c)) env2 env
                       | stack_pop s1 s2 => conf env3 env2 (update_stiva c s1 (seval_fun (pop s2)c))
                       | stack_push s1 s2 nat => conf env3 env2 (update_stiva c s1 (seval_fun (push s2 nat)c))
+                      | stack_push_var s1 s2 var => conf env3 env2 (update_stiva c s1 (seval_fun (push_var s2 var)c))
                       | stack_sempty s1 s2 => conf env3 env2 (update_stiva c s1 (seval_fun (stempty s2)c))
                       | sequence S1 S2 => eval S2 (eval S1 c gas') gas'
                       | while cond s' => if (beval_fun cond c)
@@ -593,7 +606,8 @@ stackk "x" :=: [ ] ;;
 "nr" ::= 111 ;;
 phor ( ("i" ::= 1) ~ ("i" <=' 3) ~ ("i" ::= "i" +' 1) ) 
       { stack_pop "s" (stack "s") ;;
-        stack_push "x" (stack "x") 13
+        stack_push_var "x" (stack "x") "nr" ;;
+        "nr" ::= "nr" +' 20
        }
 .
 
