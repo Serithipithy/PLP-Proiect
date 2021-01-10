@@ -162,11 +162,26 @@ stack_top "c" "a" ;;
 stack_pop "a" (stack "a") ;;
 stack_push "a" (stack "a") 12 ;;
 stack_sempty "a" (stack "a") ;;
-(ifs (2 <=' "c") den { "s" ::= 11 ;; "s" ::= "s" +' 1 }) ;;
-(ifd (2 <=' "c") denn { "s" ::= 11 ;; "s" ::= "s" +' 1 } els { stack_pop "a" (stack "a") ;; "s" ::= 45 }) ;;
-(While ( "c" <=' 11 ) { "c" ::= "c" +' 1 }) ;;
-(phor ( ("i" ::= 1) ~ ("i" <=' 3) ~ ("i" ::= "i" +' 1) ) { "c" ::= "c" *' 2 }) ;;
-do { ("c" ::= "c" *' 2) } whilee ( "c" <=' 30 )
+(ifs (2 <=' "c") 
+  den  
+    { "s" ::= 11 ;; 
+      "s" ::= "s" +' 1 
+    }) ;;
+(ifd (2 <=' "c") 
+  denn 
+    { "s" ::= 11 ;; 
+      "s" ::= "s" +' 1 
+    } els 
+        { stack_pop "a" (stack "a") ;; 
+          "s" ::= 45 
+        }) ;;
+(While ( "c" <=' 11 ) 
+    { "c" ::= "c" +' 1 }) ;;
+(phor ( ("i" ::= 1) ~ ("i" <=' 3) ~ ("i" ::= "i" +' 1) ) 
+      { "c" ::= "c" *' 2 }) ;;
+do {
+     ("c" ::= "c" *' 2) 
+    } whilee ( "c" <=' 30 )
 .
 Compute ex1.
 
